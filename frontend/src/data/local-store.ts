@@ -41,7 +41,12 @@ export function listRows(key: string): EntryRow[] {
 }
 
 export function saveRows(key: string, rows: EntryRow[]): void {
-  const next = { ...allRows(), [key]: rows }
+  saveModules({ [key]: rows })
+}
+
+// 多个键一次整体写入：要么都落盘，要么都不写，避免样本和汇总各存一半。
+export function saveModules(patch: Record<string, EntryRow[]>): void {
+  const next = { ...allRows(), ...patch }
   cache = next
   if (typeof window !== 'undefined' && window.localStorage) {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))

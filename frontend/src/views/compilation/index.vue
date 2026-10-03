@@ -63,6 +63,51 @@
       </tbody>
     </table>
 
+    <section class="panel" data-module="sediment-compilation">
+      <h3>泥沙样本整编清单</h3>
+      <p class="panel-desc">
+        读取泥沙监测的归档样本与级配计算结果：零含沙量按有效实测值展示，重复样本只保留先入库的一份，
+        原始采样时间与原级配保持不变。
+      </p>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>记录编号</th>
+            <th>站点编号</th>
+            <th>原始采样时间</th>
+            <th>含沙量</th>
+            <th>输沙率</th>
+            <th>级配计算结果</th>
+            <th>采样人</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in sedimentItems" :key="String(item.row.id)">
+            <td>{{ item.row['记录编号'] }}</td>
+            <td>{{ item.row['站点编号'] }}</td>
+            <td>{{ originalTime(item.row) }}</td>
+            <td>{{ readingText(item.row['含沙量']) }}</td>
+            <td>{{ readingText(item.row['输沙率']) }}</td>
+            <td>{{ item.gradationText }}</td>
+            <td>{{ item.row['采样人'] }}</td>
+          </tr>
+          <tr v-if="!sedimentItems.length">
+            <td colspan="7" class="empty-state">暂无归档泥沙样本，可先在泥沙监测页归档</td>
+          </tr>
+        </tbody>
+      </table>
+      <footer v-if="sedimentSummary" class="page-foot">
+        <span>
+          共 {{ sedimentItems.length }} 份归档样本
+          <template v-if="sedimentMerged">（已合并重复样本 {{ sedimentMerged }} 份）</template>
+        </span>
+        <span>
+          缺测 {{ sedimentSummary.缺测数 }} · 零含沙量 {{ sedimentSummary.零值数 }} ·
+          平均含沙量 {{ sedimentSummary.平均含沙量 ?? '—' }} · 合计输沙率 {{ sedimentSummary.合计输沙率 }}
+        </span>
+      </footer>
+    </section>
+
     <footer class="page-foot">
       <span>共 {{ total }} 条数据整编记录</span>
       <span v-if="errorMessage" class="error-text">{{ errorMessage }}</span>
@@ -79,6 +124,13 @@ import {
   moduleMeta,
   runAction as applyAction,
 } from '@/api/local-service'
+import {
+  archivedCompilation,
+  originalSampleTime,
+  readingText,
+  type CompilationItem,
+  type SedimentSummary,
+} from '@/data/sediment-rules'
 import type { EntryRow } from '@/data/types'
 
 const meta = moduleMeta('compilation')
@@ -92,6 +144,9 @@ const total = ref(0)
 const errorMessage = ref('')
 const filters = ref<Record<string, string>>({})
 const filterFields = columns.slice(0, 3)
+const sedimentItems = ref<CompilationItem[]>([])
+const sedimentMerged = ref(0)
+const sedimentSummary = ref<SedimentSummary | null>(null)
 const statusSummary = computed(() =>
   statuses.map((status: string) => ({
     status,
@@ -122,12 +177,20 @@ function runAction(action: string, row: EntryRow) {
   reload()
 }
 
+function originalTime(row: EntryRow): string {
+  return originalSampleTime(row) || '—'
+}
+
 function reload() {
   errorMessage.value = ''
   try {
     const payload = listEntries(meta.key, filters.value)
     rows.value = payload.items
     total.value = payload.total
+    const compiled = archivedCompilation()
+    sedimentItems.value = compiled.items
+    sedimentMerged.value = compiled.mergedCount
+    sedimentSummary.value = compiled.summary
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '数据整编列表读取失败'
   }
