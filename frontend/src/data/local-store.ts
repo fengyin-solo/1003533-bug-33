@@ -40,12 +40,17 @@ export function listRows(key: string): EntryRow[] {
   return allRows()[key] ?? []
 }
 
-export function saveRows(key: string, rows: EntryRow[]): void {
-  const next = { ...allRows(), [key]: rows }
+// 一次性提交整张数据表：多个数据桶要在同一次写入里落盘（比如样本+归档），
+// 要么整体成功要么整体不动，避免写了一半留下不一致的状态。
+export function commitRows(next: Record<string, EntryRow[]>): void {
   cache = next
   if (typeof window !== 'undefined' && window.localStorage) {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
   }
+}
+
+export function saveRows(key: string, rows: EntryRow[]): void {
+  commitRows({ ...allRows(), [key]: rows })
 }
 
 export function resetRows(key: string): EntryRow[] {

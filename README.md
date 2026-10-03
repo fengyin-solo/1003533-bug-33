@@ -68,4 +68,8 @@ npm run build
 - 字段、状态、动作与流转目标集中在 `frontend/src/data/modules.ts`；示例数据在
   `frontend/src/data/seed.ts`。
 - 状态流转只允许在 `local-service.ts` 里改，页面组件不做业务判断。
+- 泥沙监测的零值判定、颗粒级配计算与汇总展示收拢在 `frontend/src/data/sediment-rules.ts`，
+  采样页、级配面板与数据整编的整编清单共用这一份规则；样本登记/补录、输沙率改写与归档
+  统一走 `frontend/src/api/sediment-service.ts`，保存时样本、级配、汇总一次提交、整体成败。
+  重复样本（补录冲突、重复归档）只保留先入库的那一份，原始采样时间与原级配不被改写。
 - 想回到初始数据：清掉浏览器里 `hydrology-monitor-station:entries` 这一项，或调用 `resetModule(模块)`。

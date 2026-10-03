@@ -1,4 +1,43 @@
 import type { EntryRow } from './types'
+import { computeSedimentDischarge, gradationSummaryText } from './sediment-rules'
+
+// 泥沙示例样本的派生字段（输沙率、级配结果）也走共用规则，保证首次播种口径就一致。
+function sedimentSeedRow(
+  id: number,
+  status: string,
+  pending: boolean,
+  abnormal: boolean,
+  采样时间: string,
+  含沙量: number | null,
+  流量: number | null,
+  颗粒级配: string,
+  采样人: string,
+): EntryRow {
+  const row: EntryRow = {
+    id,
+    status,
+    pending,
+    abnormal,
+    记录编号: `SEDI-${String(id).padStart(4, '0')}`,
+    站点编号: `STAT-${String(id).padStart(4, '0')}`,
+    采样时间,
+    颗粒级配,
+    级配结果: gradationSummaryText(含沙量, 颗粒级配),
+    采样人,
+    记录状态: status,
+  }
+  if (含沙量 !== null) {
+    row.含沙量 = 含沙量
+  }
+  if (流量 !== null) {
+    row.流量 = 流量
+  }
+  const 输沙率 = computeSedimentDischarge(含沙量, 流量)
+  if (输沙率 !== null) {
+    row.输沙率 = 输沙率
+  }
+  return row
+}
 
 // 示例数据：首次打开时播种，之后浏览器里的改动优先，重置才会回到这份。
 export const SEED_ROWS: Record<string, EntryRow[]> = {
@@ -531,48 +570,9 @@ export const SEED_ROWS: Record<string, EntryRow[]> = {
     }
   ],
   "sediment": [
-    {
-      "id": 1,
-      "status": "已采集",
-      "pending": true,
-      "abnormal": false,
-      "记录编号": "SEDI-0001",
-      "站点编号": "SEDI-0001",
-      "采样时间": "2026-09-01",
-      "含沙量": "泥沙监测样例1",
-      "输沙率": "泥沙监测样例1",
-      "颗粒级配": "泥沙监测样例1",
-      "采样人": "泥沙监测样例1",
-      "记录状态": "泥沙监测样例1"
-    },
-    {
-      "id": 2,
-      "status": "待审核",
-      "pending": true,
-      "abnormal": true,
-      "记录编号": "SEDI-0002",
-      "站点编号": "SEDI-0002",
-      "采样时间": "2026-09-02",
-      "含沙量": "泥沙监测样例2",
-      "输沙率": "泥沙监测样例2",
-      "颗粒级配": "泥沙监测样例2",
-      "采样人": "泥沙监测样例2",
-      "记录状态": "泥沙监测样例2"
-    },
-    {
-      "id": 3,
-      "status": "已通过",
-      "pending": false,
-      "abnormal": false,
-      "记录编号": "SEDI-0003",
-      "站点编号": "SEDI-0003",
-      "采样时间": "2026-09-03",
-      "含沙量": "泥沙监测样例3",
-      "输沙率": "泥沙监测样例3",
-      "颗粒级配": "泥沙监测样例3",
-      "采样人": "泥沙监测样例3",
-      "记录状态": "泥沙监测样例3"
-    }
+    sedimentSeedRow(1, "已采集", true, false, "2026-09-01 08:30", 1.26, 385, "0.062:18,0.125:42,0.25:68,0.5:88,1:100", "张伟"),
+    sedimentSeedRow(2, "待审核", true, true, "2026-09-02 09:10", 0, 360, "", "李静"),
+    sedimentSeedRow(3, "已通过", false, false, "2026-09-03 17:45", 2.05, 412, "0.031:12,0.062:30,0.125:55,0.25:78,0.5:93,1:100", "王强")
   ],
   "communication": [
     {

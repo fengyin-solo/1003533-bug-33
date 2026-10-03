@@ -67,6 +67,44 @@
       <span>共 {{ total }} 条数据整编记录</span>
       <span v-if="errorMessage" class="error-text">{{ errorMessage }}</span>
     </footer>
+
+    <section class="archive-section">
+      <header class="page-head">
+        <div>
+          <h3>泥沙样品整编清单</h3>
+          <p class="page-desc">
+            读取泥沙监测归档样本与级配计算结果；重复样本只保留首次归档的一份，原始采样时间与原级配保持不变。
+          </p>
+        </div>
+      </header>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th v-for="column in archiveColumns" :key="column">{{ column }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in archiveRows" :key="String(row.id)">
+            <td>{{ row.记录编号 }}</td>
+            <td>{{ row.站点编号 }}</td>
+            <td>{{ row.采样时间 }}</td>
+            <td>{{ formatConcentration(row.含沙量) }}</td>
+            <td>{{ formatDischarge(row.输沙率) }}</td>
+            <td>{{ row.级配计算结果 }}</td>
+            <td>{{ row.采样人 ?? '—' }}</td>
+            <td>{{ row.归档时间 }}</td>
+          </tr>
+          <tr v-if="!archiveRows.length">
+            <td :colspan="archiveColumns.length" class="empty-state">
+              暂无归档泥沙样本，可先在泥沙监测页归档样本
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <footer class="page-foot">
+        <span>{{ archiveSummaryText }}</span>
+      </footer>
+    </section>
   </section>
 </template>
 
@@ -79,6 +117,8 @@ import {
   moduleMeta,
   runAction as applyAction,
 } from '@/api/local-service'
+import { archiveSummary, listSedimentArchive } from '@/api/sediment-service'
+import { formatConcentration, formatDischarge, formatNumber } from '@/data/sediment-rules'
 import type { EntryRow } from '@/data/types'
 
 const meta = moduleMeta('compilation')
@@ -92,6 +132,15 @@ const total = ref(0)
 const errorMessage = ref('')
 const filters = ref<Record<string, string>>({})
 const filterFields = columns.slice(0, 3)
+const archiveColumns = ["记录编号", "站点编号", "原始采样时间", "含沙量(kg/m³)", "输沙率(kg/s)", "级配计算结果", "采样人", "归档时间"]
+const archiveRows = ref<EntryRow[]>([])
+const archiveStats = ref(archiveSummary())
+const archiveSummaryText = computed(() => {
+  const summary = archiveStats.value
+  const avg = summary.avgConcentration === null ? '—' : formatNumber(summary.avgConcentration)
+  const discharge = summary.totalDischarge === null ? '—' : formatNumber(summary.totalDischarge)
+  return `共 ${summary.total} 份归档样本 · 零含沙量 ${summary.zero} 份 · 缺测 ${summary.missing} 份 · 平均含沙量 ${avg} kg/m³ · 合计输沙率 ${discharge} kg/s`
+})
 const statusSummary = computed(() =>
   statuses.map((status: string) => ({
     status,
@@ -128,6 +177,8 @@ function reload() {
     const payload = listEntries(meta.key, filters.value)
     rows.value = payload.items
     total.value = payload.total
+    archiveRows.value = listSedimentArchive()
+    archiveStats.value = archiveSummary()
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '数据整编列表读取失败'
   }
@@ -135,3 +186,9 @@ function reload() {
 
 onMounted(reload)
 </script>
+
+<style scoped>
+.archive-section {
+  margin-top: 24px;
+}
+</style>
